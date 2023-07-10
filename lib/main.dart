@@ -29,9 +29,15 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
+enum SortType {
+  Stars,
+  Price,
+}
+
 class _HomePageState extends State<HomePage> {
   late Future<List<Result>> _resultFuture;
   List<String> hotelImageList = hotelImages;
+  SortType _currentSort = SortType.Stars;
 
   @override
   void initState() {
@@ -48,6 +54,25 @@ class _HomePageState extends State<HomePage> {
       // Update the data source
       _resultFuture = Future.value(updatedData);
     });
+  }
+
+  List<Result> sortResultsByStars(List<Result> results) {
+    results.sort((a, b) => b.stars.compareTo(a.stars));
+    return results;
+  }
+
+  List<Result> sortResultsByPrice(List<Result> results) {
+    results.sort((a, b) => a.price.compareTo(b.price));
+    return results;
+  }
+
+  List<Result> sortResults(List<Result> results) {
+    switch (_currentSort) {
+      case SortType.Stars:
+        return sortResultsByStars(results);
+      case SortType.Price:
+        return sortResultsByPrice(results);
+    }
   }
 
   @override
@@ -78,13 +103,13 @@ class _HomePageState extends State<HomePage> {
                   ),
                 );
               } else {
-                final results = snapshot.data;
+                final results = sortResults(snapshot.data!);
                 return ListView.builder(
-                  itemCount: results?.length,
+                  itemCount: results.length,
                   itemBuilder: (context, index) {
                     return HotelCard(
                       image: hotelImages[index],
-                      title: results![index].name.replaceAll("\n", " "),
+                      title: results[index].name.replaceAll("\n", " "),
                       onPressed: onPressed,
                       price: results[index].price.toString(),
                       amenitiesDB: results[index].amenityDb,
@@ -95,6 +120,19 @@ class _HomePageState extends State<HomePage> {
               }
             },
           ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          setState(() {
+            // Toggle the sorting option
+            _currentSort = _currentSort == SortType.Stars
+                ? SortType.Price
+                : SortType.Stars;
+          });
+        },
+        child: Icon(
+          _currentSort == SortType.Stars ? Icons.attach_money : Icons.star,
         ),
       ),
     );
