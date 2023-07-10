@@ -9,7 +9,6 @@ var url =
 
 Future<List<Result>> fetchHotels() async {
   try {
-    print(apiKey);
     final response = await http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {
@@ -19,7 +18,6 @@ Future<List<Result>> fetchHotels() async {
       List<Result> resultList = results
           .map<Result>((resultJson) => Result.fromJson(resultJson))
           .toList();
-      print(resultList);
       return resultList;
     } else {
       throw Exception('Failed to fetch data');
