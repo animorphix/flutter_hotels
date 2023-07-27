@@ -55,7 +55,7 @@ class _HotelCardState extends State<HotelCard> {
             color: Colors.grey.withOpacity(0.02),
             spreadRadius: 1,
             blurRadius: 7,
-            offset: Offset(0, 3), // changes the position of the shadow
+            offset: const Offset(0, 3), // changes the position of the shadow
           ),
         ],
       ),
@@ -140,7 +140,7 @@ class _HotelCardState extends State<HotelCard> {
                   const SizedBox(height: 4.0),
                   Text(
                     "\$${widget.price}",
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ],
               ),

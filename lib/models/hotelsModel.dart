@@ -229,6 +229,7 @@ class Options {
   bool? allInclusive;
   bool? breakfast;
   bool? halfBoard;
+  bool? refundable;
 
   Options({
     this.available,
@@ -240,6 +241,7 @@ class Options {
     this.allInclusive,
     this.breakfast,
     this.halfBoard,
+    this.refundable,
   });
 
   factory Options.fromJson(Map<String, dynamic> json) => Options(
@@ -252,6 +254,7 @@ class Options {
         allInclusive: json["allInclusive"],
         breakfast: json["breakfast"],
         halfBoard: json["halfBoard"],
+        refundable: json["refundable"],
       );
 
   Map<String, dynamic> toJson() => {
@@ -264,6 +267,7 @@ class Options {
         "allInclusive": allInclusive,
         "breakfast": breakfast,
         "halfBoard": halfBoard,
+        "refundable": refundable,
       };
 }
 

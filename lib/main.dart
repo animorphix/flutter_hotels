@@ -8,10 +8,12 @@ import './models/tempHotelImages.dart';
 
 Future main() async {
   await dotenv.load(fileName: ".env");
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -19,25 +21,23 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomePage(),
+      home: const HomePage(),
     );
   }
 }
 
 class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
   @override
   _HomePageState createState() => _HomePageState();
-}
-
-enum SortType {
-  Stars,
-  Price,
 }
 
 class _HomePageState extends State<HomePage> {
   late Future<List<Result>> _resultFuture;
   List<String> hotelImageList = hotelImages;
-  SortType _currentSort = SortType.Stars;
+  Set<String> selectedFilters = {};
+  bool sortByPrice = true;
 
   @override
   void initState() {
@@ -56,22 +56,57 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  List<Result> sortResultsByStars(List<Result> results) {
-    results.sort((a, b) => b.stars.compareTo(a.stars));
-    return results;
+  List<Result> filterResults(List<Result> results, List<String> filters) {
+    if (selectedFilters.isEmpty) {
+      // If no filters selected, return all results
+      return results;
+    }
+
+    return results.where((result) {
+      final room = filterRoomsByPrice(result.rooms);
+      final options = room.options;
+      return selectedFilters.every((filter) {
+        if (filters.contains(filter)) {
+          return filter == 'Card Required'
+              ? options?.cardRequired == true
+              : filter == 'Deposit'
+                  ? options?.deposit == true
+                  : filter == 'Refundable'
+                      ? options?.refundable == true
+                      : false; // Add more conditions for other filters if needed
+        }
+        return true;
+      });
+    }).toList();
+  }
+
+  Room filterRoomsByPrice(List<Room> rooms) {
+    Room result = rooms[0];
+    var price = rooms[0].price;
+    for (var room in rooms) {
+      if (room.price < price) {
+        price = room.price;
+        result = room;
+      }
+    }
+    return result;
   }
 
   List<Result> sortResultsByPrice(List<Result> results) {
-    results.sort((a, b) => a.price.compareTo(b.price));
+    results.sort((a, b) => a.minPriceTotal.compareTo(b.minPriceTotal));
+    return results;
+  }
+
+  List<Result> sortResultsByPopularity(List<Result> results) {
+    results.sort((a, b) => b.popularity.compareTo(a.popularity));
     return results;
   }
 
   List<Result> sortResults(List<Result> results) {
-    switch (_currentSort) {
-      case SortType.Stars:
-        return sortResultsByStars(results);
-      case SortType.Price:
-        return sortResultsByPrice(results);
+    if (sortByPrice) {
+      return sortResultsByPrice(results);
+    } else {
+      return sortResultsByPopularity(results);
     }
   }
 
@@ -85,56 +120,140 @@ class _HomePageState extends State<HomePage> {
       ),
       body: RefreshIndicator(
         onRefresh: _refreshData,
-        child: Center(
-          child: FutureBuilder<List<Result>>(
-            future: _resultFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const CircularProgressIndicator();
-              } else if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    "Error: \n ${snapshot.error}",
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                );
-              } else {
-                final results = sortResults(snapshot.data!);
-                return ListView.builder(
-                  itemCount: results.length,
-                  itemBuilder: (context, index) {
-                    return HotelCard(
-                      image: hotelImages[index],
-                      title: results[index].name.replaceAll("\n", " "),
-                      onPressed: onPressed,
-                      price: results[index].price.toString(),
-                      amenitiesDB: results[index].amenityDb,
-                      stars: results[index].stars,
-                    );
+        child: Column(
+          children: [
+            FilterChipGroup(
+              filterChips: [
+                'Card Required',
+                'Deposit',
+                'Refundable',
+                // Add more filter chips here if needed
+              ],
+              selectedFilters: selectedFilters,
+              onFilterSelected: (selected) {
+                setState(() {
+                  selectedFilters = selected;
+                });
+              },
+            ),
+            SizedBox(
+              height: 16,
+            ),
+            FilterChip(
+              label: Text(
+                sortByPrice ? 'Sorted by Price' : 'Sorted by Popularity',
+                style: TextStyle(color: Colors.white),
+              ),
+              selected: false,
+              onSelected: (selected) {
+                setState(() {
+                  sortByPrice = !sortByPrice;
+                });
+              },
+              backgroundColor: Colors.blue,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+                side: BorderSide(
+                  color: Colors.blue,
+                  width: 2,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: FutureBuilder<List<Result>>(
+                  future: _resultFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const CircularProgressIndicator();
+                    } else if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          "Error: \n ${snapshot.error}",
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      );
+                    } else {
+                      final filteredResults = filterResults(
+                          snapshot.data!, selectedFilters.toList());
+                      final sortedResults = sortResults(filteredResults);
+                      return ListView.builder(
+                        itemCount: sortedResults.length,
+                        itemBuilder: (context, index) {
+                          return HotelCard(
+                            image: hotelImages[index],
+                            title:
+                                sortedResults[index].name.replaceAll("\n", " "),
+                            onPressed: onPressed,
+                            price:
+                                sortedResults[index].minPriceTotal.toString(),
+                            amenitiesDB: sortedResults[index].amenityDb,
+                            stars: sortedResults[index].stars,
+                          );
+                        },
+                      );
+                    }
                   },
-                );
-              }
-            },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class FilterChipGroup extends StatelessWidget {
+  final List<String> filterChips;
+  final Set<String> selectedFilters;
+  final Function(Set<String> selected) onFilterSelected;
+
+  const FilterChipGroup({
+    required this.filterChips,
+    required this.selectedFilters,
+    required this.onFilterSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 18,
+      children: filterChips.map((chipLabel) {
+        final isSelected = selectedFilters.contains(chipLabel);
+        return FilterChip(
+          selected: isSelected,
+          label: Text(
+            chipLabel,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.black,
+            ),
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          setState(() {
-            // Toggle the sorting option
-            _currentSort = _currentSort == SortType.Stars
-                ? SortType.Price
-                : SortType.Stars;
-          });
-        },
-        child: Icon(
-          _currentSort == SortType.Stars ? Icons.attach_money : Icons.star,
-        ),
-      ),
+          onSelected: (selected) {
+            Set<String> updatedSelectedFilters = Set.from(selectedFilters);
+            if (selected) {
+              updatedSelectedFilters.add(chipLabel);
+            } else {
+              updatedSelectedFilters.remove(chipLabel);
+            }
+            onFilterSelected(updatedSelectedFilters);
+          },
+          selectedColor: Colors.blue,
+          backgroundColor: isSelected ? Colors.blue : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
+            side: BorderSide(
+              color: isSelected ? Colors.blue : Colors.grey,
+              width: 2,
+            ),
+          ),
+          showCheckmark: false, // Hide the checkmark for selected chips
+        );
+      }).toList(),
     );
   }
 }

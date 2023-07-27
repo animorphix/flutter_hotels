@@ -6,7 +6,7 @@ class HomePageAppBar extends StatelessWidget implements PreferredSizeWidget {
   final DateTime startDate;
   final DateTime endDate;
 
-  HomePageAppBar({
+  HomePageAppBar({super.key, 
     required this.city,
     required this.startDate,
     required this.endDate,
