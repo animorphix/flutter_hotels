@@ -56,26 +56,26 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  List<Result> filterResults(List<Result> results, List<String> filters) {
+  List<Result> filterResults(
+      List<Result> results, List<String> selectedFilters) {
     if (selectedFilters.isEmpty) {
       // If no filters selected, return all results
       return results;
     }
 
+    final filtersMap = {
+      'Card Required': (Options options) => options.cardRequired == true,
+      'Deposit': (Options options) => options.deposit == true,
+      'Refundable': (Options options) => options.refundable == true,
+      // Add more conditions for other filters if needed
+    };
+
     return results.where((result) {
       final room = filterRoomsByPrice(result.rooms);
       final options = room.options;
       return selectedFilters.every((filter) {
-        if (filters.contains(filter)) {
-          return filter == 'Card Required'
-              ? options?.cardRequired == true
-              : filter == 'Deposit'
-                  ? options?.deposit == true
-                  : filter == 'Refundable'
-                      ? options?.refundable == true
-                      : false; // Add more conditions for other filters if needed
-        }
-        return true;
+        final filterFunc = filtersMap[filter];
+        return filterFunc != null ? filterFunc(options) : true;
       });
     }).toList();
   }
